@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>米袋 計算ツール</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #ffffff; /* 背景色を白に */
+            color: #333333; /* 基本の文字色 */
+        }
+        .container {
+            max-width: 960px; /* 2カラム対応のため最大幅を広げる */
+        }
+        .card {
+            margin-top: 20px;
+            border-color: #e0e0e0; /* カードの枠線を少し薄く */
+        }
+        #resultsCard {
+            display: none;
+        }
+        /* 2カラムレイアウト時のカード間のマージン調整 */
+        @media (min-width: 992px) { /* lgブレークポイント以上 */
+            .col-lg-6 .card {
+                margin-top: 0; /* カラム内のカードのトップマージンをリセット */
+            }
+            .col-lg-6:first-child .card {
+                margin-top: 20px; /* 最初のカラムのカードはマージンを維持 */
+            }
+            .col-lg-6:nth-child(2) .card {
+                margin-top: 20px; /* 2番目のカラムのカードもマージンを維持 */
+            }
+            /* 逆引き計算の結果カードのマージン調整 */
+            #reverseResultsCard.card {
+                margin-top: 0; /* card-body内のカードなのでマージンをリセット */
+            }
+        }
+
+
+        /* メインカラー（緑）の適用 */
+        h1 {
+            color: #006633; /* メインタイトル */
+        }
+        .card-title { /* カードのタイトル */
+            color: #006633;
+        }
+        .card-header {
+            background-color: #006633; /* カードヘッダーの背景 */
+            color: #ffffff; /* カードヘッダーの文字色 */
+            border-color: #006633;
+        }
+        .btn-primary {
+            background-color: #006633; /* プライマリボタン */
+            border-color: #006633;
+        }
+        .btn-primary:hover {
+            background-color: #004d26; /* ホバー時の色 */
+            border-color: #004d26;
+        }
+
+        /* アクセントカラー（オレンジ）の適用 */
+        a {
+            color: #FF6600; /* リンクの色 */
+        }
+        a:hover {
+            color: #cc5200; /* ホバー時の色 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <h1 class="mb-4 text-center">米袋 計算ツール</h1>
+
+        <!-- 通常計算エリア -->
+        <div class="card border-secondary mt-5">
+            <div class="card-header">
+                <h2 class="h4 mb-0 text-center">通常計算（玄米総量 → m数）</h2>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 col-lg-6">
+                        <!-- 入力フォーム -->
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="totalWeight" class="form-label">総量（玄米）</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="totalWeight" placeholder="例: 10">
+                                        <select class="form-select" id="weightUnit">
+                                            <option value="t">t (トン)</option>
+                                            <option value="kg" selected>kg</option>
+                                            <option value="hyo">俵 (60kg)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="reductionRate" class="form-label">精米による減量率</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="reductionRate" value="10">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="bagSize" class="form-label">袋サイズ</label>
+                                    <select class="form-select" id="bagSize">
+                                        <option value="1">1kg</option>
+                                        <option value="1.4">1.4kg</option>
+                                        <option value="1.5">1.5kg</option>
+                                        <option value="2">2kg</option>
+                                        <option value="3">3kg</option>
+                                        <option value="4">4kg</option>
+                                        <option value="5">5kg</option>
+                                        <option value="8">8kg</option>
+                                        <option value="10" selected>10kg</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">袋の長さ</label>
+                                    <div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="lengthType" id="normalLength" value="normal" checked>
+                                            <label class="form-check-label" for="normalLength">通常</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="lengthType" id="ecoLength" value="eco">
+                                            <label class="form-check-label" for="ecoLength">エコ (-30mm)</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <!-- 結果表示 -->
+                        <div class="card" id="resultsCard">
+                            <div class="card-body">
+                                <h5 class="card-title">計算結果</h5>
+                                <p class="fs-5"><strong>必要袋数:</strong> <span id="requiredBags"></span> 枚</p>
+                                <p class="fs-5"><strong>必要m数:</strong> <span id="requiredMeters"></span> m</p>
+                                <p class="fs-5"><strong>袋サイズ:</strong> <span id="bagDimension"></span> mm</p>
+                                <hr>
+                                <h6 class="card-subtitle mt-3 mb-2 text-muted">必要巻数（ロール数）</h6>
+                                <p class="mb-1"><strong>300m巻の場合:</strong> <span id="rollsFor300"></span> 巻</p>
+                                <p class="mb-1"><strong>400m巻の場合:</strong> <span id="rollsFor400"></span> 巻</p>
+                                <p class="mb-1"><strong>500m巻の場合:</strong> <span id="rollsFor500"></span> 巻</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 逆引き計算ツール -->
+        <div class="card border-secondary mt-5">
+            <div class="card-header">
+                <h2 class="h4 mb-0 text-center">逆引き計算（m数 → 玄米総量）</h2>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 col-lg-6">
+                        <h5 class="card-title">条件を入力してください</h5>
+                        <div class="mb-3">
+                            <label for="reverseTotalMeters" class="form-label">袋の合計m数</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="reverseTotalMeters" placeholder="例: 570">
+                                <span class="input-group-text">m</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reverseBagSize" class="form-label">袋サイズ</label>
+                            <select class="form-select" id="reverseBagSize">
+                                <option value="1">1kg</option>
+                                <option value="1.4">1.4kg</option>
+                                <option value="1.5">1.5kg</option>
+                                <option value="2">2kg</option>
+                                <option value="3">3kg</option>
+                                <option value="4">4kg</option>
+                                <option value="5">5kg</option>
+                                <option value="8">8kg</option>
+                                <option value="10" selected>10kg</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">袋の長さ</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="reverseLengthType" id="reverseNormalLength" value="normal" checked>
+                                    <label class="form-check-label" for="reverseNormalLength">通常</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="reverseLengthType" id="reverseEcoLength" value="eco">
+                                    <label class="form-check-label" for="reverseEcoLength">エコ (-30mm)</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reverseReductionRate" class="form-label">精米による減量率</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="reverseReductionRate" value="10">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <!-- 逆引き計算 結果表示 -->
+                        <div class="card border-secondary" id="reverseResultsCard" style="display: none;">
+                            <div class="card-body">
+                                <h5 class="card-title">計算結果</h5>
+                                <p class="fs-5"><strong>作成可能な袋数:</strong> <span id="reverseTotalBags"></span> 枚</p>
+                                <p class="fs-5"><strong>必要な玄米総量 (kg):</strong> <span id="reverseBrownRiceKg"></span> kg</p>
+                <p class="fs-5"><strong>必要な玄米総量 (t):</strong> <span id="reverseBrownRiceT"></span> t</p>
+                <p class="fs-5"><strong>必要な玄米総量 (俵):</strong> <span id="reverseBrownRiceHyo"></span> 俵</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ▼▼▼ 提供エリア ▼▼▼ -->
+    <div class="container mt-4 mb-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <p class="card-text mb-1" style="font-size: 0.8rem; color: #6c757d;">提供</p>
+                <a href="https://www.asahipac.co.jp/" target="_blank" rel="noopener noreferrer">
+                    <img src="https://www.asahipac.co.jp/cms/wp-content/themes/asahipac/images/logo.png" alt="株式会社アサヒパック" style="max-width: 200px; height: auto;">
+                </a>
+            </div>
+        </div>
+    </div>
+    <!-- ▲▲▲ 提供エリア ▲▲▲ -->
+
+    <script>
+        // --- 定数と要素の定義 ---
+        const bagSizeMap = {
+            "1": 280, "1.4": 320, "1.5": 320, "2": 350, "3": 400,
+            "4": 450, "5": 470, "8": 530, "10": 570
+        };
+
+        // 通常計算の要素
+        const totalWeightInput = document.getElementById('totalWeight');
+        const weightUnitSelect = document.getElementById('weightUnit');
+        const reductionRateInput = document.getElementById('reductionRate');
+        const bagSizeSelect = document.getElementById('bagSize');
+        const lengthTypeRadios = document.querySelectorAll('input[name="lengthType"]');
+        const resultsCard = document.getElementById('resultsCard');
+
+        // 逆引き計算の要素
+        const reverseTotalMetersInput = document.getElementById('reverseTotalMeters');
+        const reverseBagSizeSelect = document.getElementById('reverseBagSize');
+        const reverseLengthTypeRadios = document.querySelectorAll('input[name="reverseLengthType"]');
+        const reverseReductionRateInput = document.getElementById('reverseReductionRate');
+        const reverseResultsCard = document.getElementById('reverseResultsCard');
+
+        // --- 通常計算ロジック ---
+        function calculate() {
+            const totalWeight = parseFloat(totalWeightInput.value);
+            const weightUnit = weightUnitSelect.value;
+            const reductionRate = parseFloat(reductionRateInput.value);
+            const bagSize = parseFloat(bagSizeSelect.value);
+            const lengthTypeRadio = document.querySelector('input[name="lengthType"]:checked');
+            if (!lengthTypeRadio) { return; } // ラジオボタンがなければ処理を中断
+            const lengthType = lengthTypeRadio.value;
+
+            if (isNaN(totalWeight) || totalWeight <= 0 || isNaN(bagSize) || isNaN(reductionRate) || reductionRate < 0 || reductionRate >= 100) {
+                resultsCard.style.display = 'none';
+                return;
+            }
+
+            let initialTotalInKg = totalWeight;
+            if (weightUnit === 't') {
+                initialTotalInKg = totalWeight * 1000;
+            } else if (weightUnit === 'hyo') {
+                initialTotalInKg = totalWeight * 60;
+            }
+
+            let bagDimension = bagSizeMap[bagSize.toString()];
+            if (lengthType === 'eco') {
+                bagDimension -= 30;
+            }
+
+            const finalTotalInKg = initialTotalInKg * (1 - reductionRate / 100);
+            const requiredBags = Math.ceil(finalTotalInKg / bagSize);
+            const requiredMeters = Math.ceil((requiredBags * bagDimension / 1000) * 100) / 100;
+
+            document.getElementById('requiredBags').textContent = requiredBags.toLocaleString();
+            document.getElementById('requiredMeters').textContent = requiredMeters.toLocaleString();
+            document.getElementById('bagDimension').textContent = bagDimension.toLocaleString();
+            document.getElementById('rollsFor300').textContent = (requiredMeters / 300).toFixed(2);
+            document.getElementById('rollsFor400').textContent = (requiredMeters / 400).toFixed(2);
+            document.getElementById('rollsFor500').textContent = (requiredMeters / 500).toFixed(2);
+
+            resultsCard.style.display = 'block';
+        }
+
+        // --- 逆引き計算ロジック ---
+        function reverseCalculate() {
+            const totalMeters = parseFloat(reverseTotalMetersInput.value);
+            const bagSize = parseFloat(reverseBagSizeSelect.value);
+            const reductionRate = parseFloat(reverseReductionRateInput.value);
+            const reverseLengthTypeRadio = document.querySelector('input[name="reverseLengthType"]:checked');
+            if (!reverseLengthTypeRadio) { return; } // ラジオボタンがなければ処理を中断
+            const reverseLengthType = reverseLengthTypeRadio.value;
+
+            if (isNaN(totalMeters) || totalMeters <= 0 || isNaN(bagSize) || isNaN(reductionRate) || reductionRate < 0 || reductionRate >= 100) {
+                reverseResultsCard.style.display = 'none';
+                return;
+            }
+
+            let dimension = bagSizeMap[bagSize.toString()];
+            if (reverseLengthType === 'eco') {
+                dimension -= 30;
+            }
+
+            const totalBags = Math.floor(totalMeters / (dimension / 1000));
+            const polishedRiceWeightKg = totalBags * bagSize;
+            const brownRiceWeightKg = polishedRiceWeightKg / (1 - reductionRate / 100);
+            const brownRiceWeightT = brownRiceWeightKg / 1000;
+            const brownRiceWeightHyo = brownRiceWeightKg / 60; // 俵を計算
+
+            document.getElementById('reverseTotalBags').textContent = totalBags.toLocaleString();
+            document.getElementById('reverseBrownRiceKg').textContent = brownRiceWeightKg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('reverseBrownRiceT').textContent = brownRiceWeightT.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+            document.getElementById('reverseBrownRiceHyo').textContent = brownRiceWeightHyo.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // 俵を表示
+
+            reverseResultsCard.style.display = 'block';
+        }
+
+        // --- イベントリスナーの設定 ---
+        const normalCalcElements = [totalWeightInput, weightUnitSelect, reductionRateInput, bagSizeSelect];
+        normalCalcElements.forEach(element => element.addEventListener('input', calculate));
+        lengthTypeRadios.forEach(radio => radio.addEventListener('change', calculate));
+
+        const reverseCalcElements = [reverseTotalMetersInput, reverseBagSizeSelect, reverseReductionRateInput];
+        reverseCalcElements.forEach(element => element.addEventListener('input', reverseCalculate));
+        reverseLengthTypeRadios.forEach(radio => radio.addEventListener('change', reverseCalculate));
+
+    </script>
+</body>
+</html>

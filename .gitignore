@@ -1,0 +1,8 @@
+# Dependencies
+/node_modules
+
+# Build output
+/out
+
+# Temporary files
+commit_message.txt
