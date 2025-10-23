@@ -16,7 +16,7 @@ function createWindow () {
   });
 
   // Load the HTML file.
-  mainWindow.loadFile('米袋計算ツール.html');
+  mainWindow.loadFile('index.html');
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools();
